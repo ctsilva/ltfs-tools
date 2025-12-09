@@ -11,7 +11,7 @@ from rich.table import Table
 
 from . import catalog as catalog_module
 from .config import get_config
-from .mount import mount as mount_func, unmount as unmount_func, get_tape_info, MountError
+from .mount import mount as mount_func, unmount as unmount_func, format_tape as format_tape_func, get_tape_info, MountError
 from .transfer import transfer as transfer_func, TransferError
 from .verify import verify as verify_func, VerifyError
 
@@ -32,6 +32,77 @@ def format_bytes(size: int) -> str:
 def main():
     """LTFS Tools - Cross-platform LTO tape archive management."""
     pass
+
+
+@main.command()
+@click.argument("volume_name")
+@click.option(
+    "-d", "--device",
+    help="Tape device to format",
+)
+@click.option(
+    "-f", "--force",
+    is_flag=True,
+    help="Force format even if tape is already formatted",
+)
+@click.option(
+    "--no-compression",
+    is_flag=True,
+    help="Disable hardware compression (enabled by default)",
+)
+@click.option(
+    "--rules",
+    help="Data placement rules (e.g., 'size=500k/name=metadata.xml')",
+)
+def format(volume_name: str, device: Optional[str], force: bool, no_compression: bool, rules: Optional[str]):
+    """Format a tape with LTFS filesystem.
+
+    WARNING: This will erase all data on the tape!
+
+    Examples:
+        ltfs-tool format BACKUP01
+        ltfs-tool format BACKUP01 -d 0
+        ltfs-tool format BACKUP01 --force
+        ltfs-tool format BACKUP01 --rules "size=500k/name=*.mhl"
+        ltfs-tool format BACKUP01 --no-compression
+    """
+    config = get_config()
+
+    console.print("[bold red]WARNING: This will erase all data on the tape![/bold red]")
+    console.print(f"Volume name: {volume_name}")
+    console.print(f"Device: {device or config.device}")
+    if force:
+        console.print("Force: YES (will overwrite existing LTFS format)")
+    if no_compression:
+        console.print("Compression: DISABLED")
+    else:
+        console.print("Compression: ENABLED (hardware)")
+    if rules:
+        console.print(f"Rules: {rules}")
+    console.print()
+
+    if not click.confirm("Are you sure you want to format this tape?"):
+        console.print("Format cancelled")
+        return
+
+    console.print("[bold]Formatting tape with LTFS...[/bold]")
+    console.print("This may take several minutes...")
+
+    try:
+        format_tape_func(
+            volume_name=volume_name,
+            device=device,
+            compression=not no_compression,
+            rules=rules,
+            force=force,
+            config=config,
+        )
+        console.print(f"[green]✓[/green] Tape formatted successfully as '{volume_name}'")
+        console.print("  You can now mount and use the tape")
+
+    except MountError as e:
+        console.print(f"[red]✗[/red] Format failed: {e}")
+        raise SystemExit(1)
 
 
 @main.command()
@@ -99,7 +170,9 @@ def mount(
         # Show basic info
         info = get_tape_info(result, config)
         if info.get("mounted"):
-            console.print(f"  Files: {info['file_count']}")
+            # file_count only available with deep_scan
+            if "file_count" in info:
+                console.print(f"  Files: {info['file_count']}")
             console.print(f"  Size: {format_bytes(info['total_size'])}")
 
     except MountError as e:

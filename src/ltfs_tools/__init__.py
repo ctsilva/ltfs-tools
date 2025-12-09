@@ -10,7 +10,7 @@ __version__ = "0.1.0"
 from .config import Config, get_config, set_config
 from .hash import hash_file, verify_hash
 from .mhl import MHL, HashEntry, CreatorInfo, TapeInfo
-from .mount import mount, unmount, get_tape_info, MountError
+from .mount import mount, unmount, format_tape, get_tape_info, MountError
 from .transfer import transfer, TransferResult, TransferError
 from .verify import verify, VerifyResult, VerifyError
 from .catalog import (
@@ -51,6 +51,7 @@ __all__ = [
     # Mount
     "mount",
     "unmount",
+    "format_tape",
     "get_tape_info",
     "MountError",
     # Transfer

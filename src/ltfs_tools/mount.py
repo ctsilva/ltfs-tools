@@ -55,7 +55,10 @@ def mount(
         )
 
     # Create mount point if needed
-    mount_point.mkdir(parents=True, exist_ok=True)
+    # On macOS, /Volumes is managed by the system - LTFS will create the mount point
+    # On Linux, we need to create the directory first
+    if config.platform.name == "linux" or not str(mount_point).startswith("/Volumes/"):
+        mount_point.mkdir(parents=True, exist_ok=True)
 
     # Create index backup directory
     config.init_dirs()
@@ -130,7 +133,7 @@ def unmount(
     mount_point = mount_point or config.mount_point
 
     # Check if mounted
-    if not config.is_mounted():
+    if not _verify_mount(mount_point):
         return  # Already unmounted, nothing to do
 
     # Sync filesystem
@@ -144,7 +147,7 @@ def unmount(
         cmd = ["fusermount", "-u", str(mount_point)]
 
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
 
         if result.returncode != 0:
             # On Linux, try regular umount as fallback
@@ -153,7 +156,7 @@ def unmount(
                     ["umount", str(mount_point)],
                     capture_output=True,
                     text=True,
-                    timeout=60,
+                    timeout=300,
                 )
 
             if result.returncode != 0:
@@ -172,6 +175,78 @@ def unmount(
     time.sleep(2)
     if _verify_mount(mount_point):
         raise MountError("Unmount command succeeded but mount point is still mounted")
+
+
+def format_tape(
+    volume_name: str,
+    device: Optional[str] = None,
+    compression: bool = True,
+    rules: Optional[str] = None,
+    force: bool = False,
+    config: Optional[Config] = None,
+) -> None:
+    """
+    Format a tape with LTFS filesystem.
+
+    Args:
+        volume_name: Name for the tape volume
+        device: Device to format (default: from config)
+        compression: Enable hardware compression (default: True)
+        rules: LTFS rules for data placement (e.g., "size=500k/name=metadata.xml")
+        force: Force format even if tape is already formatted (default: False)
+        config: Configuration to use
+
+    Raises:
+        MountError: If formatting fails
+    """
+    if config is None:
+        config = get_config()
+
+    if device is None:
+        device = config.device
+
+    # Build mkltfs command
+    cmd = [str(config.platform.mkltfs_bin)]
+
+    # Platform-specific device handling
+    if config.platform.name == "macos":
+        # macOS: device is numeric index (e.g., "0")
+        cmd.extend(["-d", device])
+    else:
+        # Linux: device is /dev/stN (tape/streaming device, not /dev/sgN)
+        cmd.extend(["-d", device])
+
+    # Add volume name
+    cmd.extend(["-n", volume_name])
+
+    # Force format if requested
+    if force:
+        cmd.append("-f")
+
+    # Compression (disabled if compression=False)
+    if not compression:
+        cmd.append("-c")
+
+    # Data placement rules
+    if rules:
+        cmd.extend(["-r", rules])
+
+    # Run mkltfs
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=600,  # 10 minutes for format
+        )
+
+        if result.returncode != 0:
+            raise MountError(f"Format failed: {result.stderr}")
+
+    except subprocess.TimeoutExpired:
+        raise MountError(
+            "Format timed out - this may indicate a hardware issue"
+        )
 
 
 def _verify_mount(mount_point: Path) -> bool:
