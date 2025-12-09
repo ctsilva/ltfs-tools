@@ -582,20 +582,6 @@ Based on benchmarks with 10 GB transfers:
 
 **Rule of thumb**: Total time ≈ 3× raw transfer time (includes hashing and verification).
 
-## How It Compares to Commercial Tools
-
-| Feature | ltfs-tools | Canister | YoYotta | Hedge |
-|---------|------------|----------|---------|-------|
-| LTFS Mount/Unmount | ✅ | ✅ | ✅ | ✅ |
-| Index Backup | ✅ Auto | ✅ | ✅ | ✅ |
-| Offline Catalogs | ✅ | ✅ | ✅ | ✅ |
-| MHL Generation | ✅ | ✅ | ✅ | ✅ |
-| XXHash64 | ✅ | ✅ | ❌ | ❌ |
-| Python API | ✅ | ❌ | ❌ | ❌ |
-| Open Source | ✅ | ❌ | ❌ | ❌ |
-| Cross-platform | ✅ | macOS only | ✅ | macOS only |
-| Price | Free | $299 | Enterprise | $295 |
-
 ## Development
 
 ```bash
