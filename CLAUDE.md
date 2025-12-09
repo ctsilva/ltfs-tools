@@ -34,7 +34,8 @@ ltfs-tools/
 │       ├── catalog_db.py       # SQLite catalog database
 │       ├── catalogfs.py        # FUSE virtual filesystem
 │       ├── ltfs_index.py       # LTFS index XML parser
-│       └── hash.py             # XXHash wrapper
+│       ├── hash.py             # XXHash wrapper
+│       └── utils.py            # Shared utilities (path normalization)
 └── tests/
     ├── __init__.py
     └── test_ltfs_tools.py      # pytest tests
@@ -78,6 +79,32 @@ ltfs-tools/
 - **For formatting** (`mkltfs`): Use `/dev/stN` (tape/streaming device) - e.g., `/dev/st0`
 
 These refer to the same physical tape drive, just different kernel interfaces.
+
+### Unicode Normalization (NFD vs NFC)
+
+macOS and Linux use different Unicode normalization forms for filenames:
+
+| Platform | Normalization | Example |
+|----------|---------------|---------|
+| macOS HFS+/APFS | NFD (decomposed) | é = e + ́ (two code points) |
+| Linux ext4/XFS | NFC (composed) | é = é (one code point) |
+
+**How ltfs-tools handles this:**
+
+1. **rsync preserves bytes as-is** - Files written to tape have the exact bytes from the source filesystem. No conversion happens during transfer.
+
+2. **Normalization at comparison layer** - All path comparisons (MHL lookup, catalog search, verification) normalize to NFC using `unicodedata.normalize("NFC", path)`.
+
+3. **Implications:**
+   - Same-platform backup/restore: Works perfectly (bytes match)
+   - Cross-platform (backup on macOS, restore on Linux): File contents are identical, but filenames may display differently due to the underlying bytes
+   - Searching/verification: Always works because we normalize before comparing
+
+**Implementation:** See `utils.py:normalize_path()` which is used in:
+- `mhl.py` - When reading/writing MHL entries
+- `catalog_db.py` - When storing/searching the SQLite database
+- `catalog.py` - When searching filesystem catalogs
+- `verify.py` - When comparing MHL files
 
 ## LTFS Index Files
 
