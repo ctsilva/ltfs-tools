@@ -18,6 +18,7 @@ from rich.progress import (
 from .config import Config, get_config
 from .hash import hash_file
 from .mhl import MHL
+from .utils import normalize_path
 
 console = Console()
 
@@ -169,8 +170,9 @@ def compare_mhl_files(mhl1_path: Path, mhl2_path: Path) -> dict:
     mhl1 = MHL.load(mhl1_path)
     mhl2 = MHL.load(mhl2_path)
 
-    hashes1 = {entry.file: entry.xxhash64be for entry in mhl1}
-    hashes2 = {entry.file: entry.xxhash64be for entry in mhl2}
+    # Paths are already normalized by MHL.load(), but normalize again for safety
+    hashes1 = {normalize_path(entry.file): entry.xxhash64be for entry in mhl1}
+    hashes2 = {normalize_path(entry.file): entry.xxhash64be for entry in mhl2}
 
     files1 = set(hashes1.keys())
     files2 = set(hashes2.keys())

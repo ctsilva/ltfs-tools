@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Iterator, Optional
 
 from .config import Config, get_config
+from .utils import normalize_path
 
 
 # Schema version for migrations
@@ -266,6 +267,8 @@ class CatalogDB:
 
             for path, size, mtime, xxhash in files:
                 mtime_str = mtime.isoformat() if mtime else None
+                # Normalize path to NFC for cross-platform consistency
+                normalized_path = normalize_path(path)
 
                 try:
                     cursor.execute("""
@@ -276,7 +279,7 @@ class CatalogDB:
                             mtime = excluded.mtime,
                             xxhash = excluded.xxhash,
                             archived_at = excluded.archived_at
-                    """, (tape_name, path, size, mtime_str, xxhash, archived_str))
+                    """, (tape_name, normalized_path, size, mtime_str, xxhash, archived_str))
                     added += 1
                     total_bytes += size
                 except sqlite3.Error:
@@ -311,6 +314,9 @@ class CatalogDB:
         """
         with self._connection() as conn:
             cursor = conn.cursor()
+
+            # Normalize pattern to NFC for cross-platform consistency
+            pattern = normalize_path(pattern)
 
             # Convert glob pattern to SQL LIKE pattern
             sql_pattern = pattern.replace("*", "%").replace("?", "_")
@@ -373,6 +379,9 @@ class CatalogDB:
         Returns:
             List of SearchResult objects
         """
+        # Normalize query to NFC for cross-platform consistency
+        query = normalize_path(query)
+
         with self._connection() as conn:
             cursor = conn.cursor()
 

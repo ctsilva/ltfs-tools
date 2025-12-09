@@ -15,6 +15,8 @@ from pathlib import Path
 from typing import Iterator, Optional
 from xml.dom import minidom
 
+from .utils import normalize_path
+
 __version__ = "0.1.0"
 
 
@@ -48,7 +50,8 @@ class HashEntry:
         hash_elem = ET.Element("hash")
 
         file_elem = ET.SubElement(hash_elem, "file")
-        file_elem.text = sanitize_xml_string(self.file)
+        # Normalize to NFC for cross-platform consistency
+        file_elem.text = sanitize_xml_string(normalize_path(self.file))
 
         size_elem = ET.SubElement(hash_elem, "size")
         size_elem.text = str(self.size)
@@ -69,7 +72,8 @@ class HashEntry:
     @classmethod
     def from_element(cls, elem: ET.Element) -> "HashEntry":
         """Create from XML element."""
-        file_path = elem.findtext("file", "")
+        # Normalize to NFC for cross-platform consistency
+        file_path = normalize_path(elem.findtext("file", ""))
         size = int(elem.findtext("size", "0"))
         xxhash = elem.findtext("xxhash64be", "")
 

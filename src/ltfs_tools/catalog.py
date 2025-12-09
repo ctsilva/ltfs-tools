@@ -14,6 +14,7 @@ from typing import Iterator, Optional
 
 from .config import Config, get_config
 from .ltfs_index import LTFSIndexParser, LTFSIndex, IndexFile, IndexDirectory
+from .utils import normalize_path
 
 
 @dataclass
@@ -189,12 +190,16 @@ def search_catalogs(
     # Convert simple wildcard to glob pattern
     import fnmatch
 
+    # Normalize pattern for cross-platform consistency
+    pattern = normalize_path(pattern)
+
     for tape in tapes:
         catalog_dir = config.catalog_dir / tape
 
         for path in catalog_dir.rglob("*"):
             if path.is_file():
-                rel_path = str(path.relative_to(catalog_dir))
+                # Normalize path for cross-platform consistency
+                rel_path = normalize_path(str(path.relative_to(catalog_dir)))
                 if fnmatch.fnmatch(rel_path.lower(), pattern.lower()):
                     results.append((tape, rel_path))
 

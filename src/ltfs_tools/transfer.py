@@ -3,24 +3,12 @@ File transfer operations with verification.
 """
 
 import subprocess
-import unicodedata
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Optional
 
-
-def normalize_path(path: str) -> str:
-    """Normalize Unicode path to NFC form for consistent comparison.
-
-    Different filesystems store Unicode filenames in different normalization forms:
-    - macOS HFS+: NFD (decomposed) - é is stored as e + combining acute accent
-    - Linux ext4/ZFS: Usually NFD if created from macOS
-    - LTFS: NFC (composed) - é is stored as a single character
-
-    This function normalizes all paths to NFC for consistent comparison.
-    """
-    return unicodedata.normalize("NFC", path)
+from .utils import normalize_path
 
 from rich.console import Console
 from rich.progress import (
@@ -313,16 +301,18 @@ def transfer(
             log_file.flush()
 
             # Run rsync and tee output to both console and log
+            # Use binary mode to handle non-UTF-8 filenames gracefully
             process = subprocess.Popen(
                 rsync_cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
-                text=True,
                 bufsize=1,
             )
 
-            # Stream output line by line
-            for line in process.stdout:
+            # Stream output line by line, handling encoding errors
+            for raw_line in process.stdout:
+                # Decode with error handling for non-UTF-8 filenames
+                line = raw_line.decode("utf-8", errors="replace")
                 console.print(line.rstrip())
                 log_file.write(line)
 

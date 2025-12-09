@@ -31,6 +31,7 @@ from .catalog_db import (
     search as db_search,
     find_by_hash,
 )
+from .utils import normalize_path
 
 __all__ = [
     # Version
@@ -76,4 +77,6 @@ __all__ = [
     "get_catalog_db",
     "db_search",
     "find_by_hash",
+    # Utils
+    "normalize_path",
 ]
