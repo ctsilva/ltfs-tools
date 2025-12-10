@@ -496,6 +496,20 @@ Without this, verification may read from cache at 4000+ MB/s instead of actual t
 
 **Note:** macOS does not support `vm.drop_caches`, so cache clearing is skipped on macOS. Verification speeds may be inflated if files are still in page cache.
 
+### Verification Read Order
+
+Currently verification reads files in MHL order (filesystem traversal order from Phase 1 hashing). This is close enough to rsync's write order (Phase 2) that performance is good - mostly sequential reads with minimal tape repositioning.
+
+Physical tape order optimization (using LTFS index extent info to sort by partition + block number) would be theoretically possible but adds complexity without significant benefit given:
+- LTFS read-ahead buffering smooths over small out-of-order accesses
+- Natural order similarity between Python's `rglob()` and rsync's traversal
+- Files are written contiguously, so alphabetically-close filenames are often physically close on tape
+
+Consider implementing physical-order reads only if:
+- Selective/partial verification is added (checking random subsets of files)
+- Shoe-shining (frequent tape stops/starts) becomes audible during verification
+- Restoring specific files from tape (not yet implemented)
+
 ### Best Practices for Production Use
 
 **Use tmux for long-running transfers:**
@@ -712,6 +726,7 @@ Common attributes:
 
 ### Medium Priority
 - [x] SQLite catalog database for fast search (**DONE** - see `catalog_db.py`)
+- [ ] Drive health monitoring via SCSI log pages (TapeAlert, device statistics)
 - [ ] Multiple hash algorithms (MD5, SHA1) for compatibility
 - [ ] Tape spanning support
 - [ ] Email/Slack notifications

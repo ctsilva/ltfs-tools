@@ -187,6 +187,7 @@ class Config:
     excludes: list[str] = field(
         default_factory=lambda: [
             ".DS_Store",
+            "._*",  # AppleDouble files (macOS metadata)
             ".Spotlight-*",
             ".fseventsd",
             ".Trashes",
