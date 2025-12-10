@@ -191,7 +191,7 @@ class Config:
             ".fseventsd",
             ".Trashes",
             ".Trash/",
-            "Library/Caches/",
+            "*/Library/Caches/*",  # Match Library/Caches anywhere in path
             "*.tmp",
             ".TemporaryItems",
             "Thumbs.db",

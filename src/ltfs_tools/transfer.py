@@ -588,6 +588,7 @@ def _should_exclude(path: Path, patterns: list[str]) -> bool:
 
     Patterns:
     - Exact match: checks if pattern appears in any path component
+    - Full-path glob (contains /): uses fnmatch on entire path
     - Glob patterns (with * or ?): uses fnmatch on each path component
     - Directory patterns (ending with /): matches directory names
     """
@@ -603,7 +604,11 @@ def _should_exclude(path: Path, patterns: list[str]) -> bool:
             for part in path_parts:
                 if part == dir_pattern or fnmatch.fnmatch(part, dir_pattern):
                     return True
-        # Glob pattern (contains * or ?)
+        # Full-path glob pattern (contains / and wildcards)
+        elif ("*" in pattern or "?" in pattern) and "/" in pattern:
+            if fnmatch.fnmatch(path_str, pattern):
+                return True
+        # Component glob pattern (contains * or ?)
         elif "*" in pattern or "?" in pattern:
             for part in path_parts:
                 if fnmatch.fnmatch(part, pattern):
