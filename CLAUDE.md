@@ -71,6 +71,7 @@ ltfs-tools/
 | Device (format) | - | `/dev/st0` (tape/streaming) |
 | Mount point | `/Volumes/LTFS` | `/media/tape` |
 | xattr prefix | `ltfs.*` | `user.ltfs.*` |
+| FUSE volname option | Supported (sets Finder name) | Not supported |
 
 **Linux Device Auto-Detection**: On Linux, the tape device is automatically detected using `lsscsi -g`, which shows SCSI devices with their generic device paths. This avoids hardcoding device paths like `/dev/sg1` which can change between reboots or when devices are added/removed.
 

@@ -72,7 +72,9 @@ def mount(
         "-o", f"capture_index={config.index_dir}",  # Auto-backup indexes
     ]
 
-    if volume_name:
+    # volname is macOS-specific (sets the volume name in Finder)
+    # On Linux FUSE, this option is not recognized
+    if volume_name and config.platform.name == "macos":
         cmd.extend(["-o", f"volname={volume_name}"])
 
     # Optional LTFS settings (YoYotta-style)
@@ -103,10 +105,21 @@ def mount(
     except FileNotFoundError:
         raise MountError(f"LTFS binary not found: {config.platform.ltfs_bin}")
 
-    # Wait for mount and verify
-    time.sleep(2)
-    if not _verify_mount(mount_point):
-        raise MountError("Mount command succeeded but mount point is not accessible")
+    # Wait for mount and verify with retry
+    # LTFS may fork to background and take a few seconds to complete FUSE setup
+    max_wait = 30  # seconds
+    check_interval = 0.5
+    waited = 0
+    while waited < max_wait:
+        time.sleep(check_interval)
+        waited += check_interval
+        if _verify_mount(mount_point):
+            break
+    else:
+        raise MountError(
+            "Mount command succeeded but mount point is not accessible after "
+            f"{max_wait} seconds. Check LTFS logs for errors."
+        )
 
     return mount_point
 
